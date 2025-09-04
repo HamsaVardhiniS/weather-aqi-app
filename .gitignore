@@ -1,14 +1,23 @@
-# Ignore everything by default
-*
+# --- Keep only important files ---
+# (pom.xml, .gitignore, README.md, and Java sources)
 
-# Allow Maven config
-!pom.xml
+# Ignore everything in src except Java sources
+/src/main/frontend/
+/src/test/
+/target/
 
-# Allow Git ignore itself
-!.gitignore
+# IDE/editor configs
+/.idea/
+/.vscode/
+/*.iml
 
-# Allow README
-!README.md
+# Node/Frontend lockfiles
+/node_modules/
+/pnpm-lock.yaml
+/package-lock.json
+/yarn.lock
 
-# Allow Java sources only
-!src/main/java/**
+# Logs & OS junk
+*.log
+.DS_Store
+Thumbs.db

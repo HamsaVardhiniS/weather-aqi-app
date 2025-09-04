@@ -72,7 +72,6 @@ public class YesterdayDataFetcher {
         }
     }
 
-    // ================= WEATHER =================
     private static void insertWeatherData(Connection conn, int cityId, LocalDate date, JsonObject weather) throws SQLException {
         String sql = "INSERT INTO historical_weather VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -101,7 +100,6 @@ public class YesterdayDataFetcher {
         }
     }
 
-    // ================= AQI =================
     private static void insertAqiData(Connection conn, int cityId, LocalDate date, JsonObject aqi) throws SQLException {
         String sql = "INSERT INTO historical_aqi VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {

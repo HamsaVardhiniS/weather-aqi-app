@@ -25,13 +25,9 @@ public class WeatherForecastFetcher {
             "uv_index_max,rain_sum,precipitation_sum,wind_speed_10m_max," +
             "wind_gusts_10m_max,wind_direction_10m_dominant";
 
-    public static void main(String[] args) {
-        String cityName = "Jaipur"; // Example input
+    public static JsonObject getForecastDataForCity(String cityName) throws Exception {
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
-            JsonObject forecastData = getForecastDataForCity(conn, cityName);
-            System.out.println("Forecast Data for " + cityName + ":\n" + forecastData);
-        } catch (Exception e) {
-            e.printStackTrace();
+            return getForecastDataForCity(conn, cityName);
         }
     }
 

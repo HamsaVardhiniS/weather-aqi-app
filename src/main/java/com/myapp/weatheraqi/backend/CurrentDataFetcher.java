@@ -10,7 +10,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -25,14 +24,9 @@ public class CurrentDataFetcher {
 
     private static final String AQI_PARAMS = "pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,ozone,sulphur_dioxide";
 
-    public static void main(String[] args) {
-        String cityName = "Chennai"; // Example input from frontend
-
+    public static JsonObject getCurrentDataForCity(String cityName) throws Exception {
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
-            JsonObject currentData = getCurrentDataForCity(conn, cityName);
-            System.out.println("Current Data for " + cityName + ":\n" + currentData);
-        } catch (Exception e) {
-            e.printStackTrace();
+            return getCurrentDataForCity(conn, cityName);
         }
     }
 
@@ -85,9 +79,5 @@ public class CurrentDataFetcher {
                 .GET()
                 .build();
         return client.send(request, HttpResponse.BodyHandlers.ofString()).body();
-    }
-
-    private static double getSafeValue(JsonElement el) {
-        return (el == null || el.isJsonNull()) ? Double.NaN : el.getAsDouble();
     }
 }

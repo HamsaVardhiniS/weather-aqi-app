@@ -1,8 +1,11 @@
 package com.myapp.weatheraqi.ui;
 
-import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Footer;
+import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
@@ -16,45 +19,79 @@ public class MainView extends VerticalLayout {
 
     private final AqiView aqiView;
     private final WeatherView weatherView;
-    private Component currentContent;
+    private final VerticalLayout contentWrapper;
 
     public MainView() {
         setSizeFull();
-        setSpacing(true);
-        setPadding(true);
+        setSpacing(false);
+        setPadding(false);
 
-        // Title
-        H1 title = new H1("City Dashboard");
+        Header header = new Header();
+        header.setWidthFull();
+        header.getStyle()
+                .set("background-color", "#0A2342")
+                .set("color", "white")
+                .set("padding", "1rem")
+                .set("text-align", "center");
+        H1 appName = new H1("🌦️ Weather & AQI App");
+        appName.getStyle().set("margin", "0").set("color", "#FFD23F");
+        header.add(appName);
 
-        // City selector
         ComboBox<String> citySelector = new ComboBox<>("Select City");
-        List<String> cities = Arrays.asList("Chennai", "Delhi", "Mumbai", "Bengaluru", "Kolkata");
+        List<String> cities = Arrays.asList(
+                "Amaravati", "Guwahati", "Patna", "Mumbai", "Ahmedabad",
+                "Shimla", "Ranchi", "Bangalore", "Thiruvanthapuram",
+                "Bhopal", "Chandigarh", "Jaipur", "Gangtok", "Chennai",
+                "Hyderabad", "Lucknow", "Dehradun", "Kolkata", "Port Blair",
+                "Srinagar", "New Delhi", "Puducherry"
+        );
         citySelector.setItems(cities);
         citySelector.setValue("Chennai"); // default
 
-        // Views
         aqiView = new AqiView();
         weatherView = new WeatherView();
 
-        // Tabs
+        weatherView.updateWeatherForCity(citySelector.getValue());
+        aqiView.updateAqiForCity(citySelector.getValue());
+
         Tab aqiTab = new Tab("AQI 🌫️");
         Tab weatherTab = new Tab("Weather 🌞");
         Tabs tabs = new Tabs(aqiTab, weatherTab);
 
-        // Default view
-        currentContent = aqiView;
+        contentWrapper = new VerticalLayout();
+        contentWrapper.setSizeFull();
+        contentWrapper.add(aqiView);
 
         tabs.addSelectedChangeListener(event -> {
-            remove(currentContent);
+            contentWrapper.removeAll();
             if (event.getSelectedTab() == aqiTab) {
-                currentContent = aqiView;
+                contentWrapper.add(aqiView);
             } else {
-                currentContent = weatherView;
+                contentWrapper.add(weatherView);
             }
-            add(currentContent);
         });
 
-        // Layout
-        add(title, citySelector, tabs, currentContent);
+        citySelector.addValueChangeListener(event -> {
+            String selectedCity = event.getValue();
+            if (selectedCity != null) {
+                weatherView.updateWeatherForCity(selectedCity);
+                aqiView.updateAqiForCity(selectedCity);
+            }
+        });
+
+        Footer footer = new Footer();
+        footer.setWidthFull();
+        footer.getStyle()
+                .set("background-color", "#0A2342")
+                .set("color", "white")
+                .set("text-align", "center")
+                .set("padding", "0.5rem");
+        footer.add(new Span("© 2025 Weather & AQI App • Built with Spring Boot + Vaadin"));
+
+        Div contentArea = new Div(citySelector, tabs, contentWrapper);
+        contentArea.getStyle().set("padding", "1rem").set("flex", "1");
+
+        add(header, contentArea, footer);
+        expand(contentArea);
     }
 }

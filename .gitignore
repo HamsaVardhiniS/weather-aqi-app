@@ -1,0 +1,14 @@
+# Ignore everything by default
+*
+
+# Allow Maven config
+!pom.xml
+
+# Allow Git ignore itself
+!.gitignore
+
+# Allow README
+!README.md
+
+# Allow Java sources only
+!src/main/java/**

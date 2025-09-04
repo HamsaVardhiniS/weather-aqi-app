@@ -1,22 +1,22 @@
-# 🌦️ Weather & AQI App
+# Weather & AQI App
 
 A **Spring Boot + Vaadin** application that provides **weather forecasts** and **air quality index (AQI) data**.  
 Built for Indian cities, but easily extendable for global use.
 
 ---
 
-## ✨ Features
+## Features
 
-- 📅 **7-day weather forecast**
-- 🌤️ **Current weather conditions**
-- 📜 **Historical weather data**
-- 🌍 **Current Air Quality Index (AQI)**
-- 🏙️ **Historical AQI trends**
-- 🖥️ **Clean Vaadin UI** with Weather and AQI views
+- **7-day weather forecast**
+- **Current weather conditions**
+- **Historical weather data**
+- **Current Air Quality Index (AQI)**
+- **Historical AQI trends**
+- **Clean Vaadin UI** with Weather and AQI views
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 src/main/java/com/myapp/weatheraqi
 ├── Application.java # Spring Boot entry point
@@ -26,18 +26,18 @@ pom.xml # Maven dependencies & build config
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- ☕ **Java 17**
-- 🚀 **Spring Boot 3.2**
-- 🎨 **Vaadin 24**
-- 🏗️ **Maven**
-- 🗄️ **MySQL** (for persistent storage)
-- 📦 **Gson** (for JSON parsing)
+- **Java 17**
+- **Spring Boot 3.2**
+- **Vaadin 24**
+- **Maven**
+- **MySQL** (for persistent storage)
+- **Gson** (for JSON parsing)
 
 ---
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 ### 1️⃣ Clone the repository
 

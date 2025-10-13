@@ -8,14 +8,17 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.progressbar.ProgressBar;
 
 import java.time.LocalDate;
+import java.util.concurrent.CompletableFuture;
 
 public class AqiView extends VerticalLayout {
 
     private final Div liveAqiDiv;
     private final Div historicalDiv;
     private final DatePicker historicalDatePicker;
+    private final ProgressBar progressBar;
     private String currentCity;
 
     public AqiView(String city) {
@@ -28,6 +31,11 @@ public class AqiView extends VerticalLayout {
         setSpacing(true);
 
         add(new H2("Air Quality Index (AQI)"));
+
+        progressBar = new ProgressBar();
+        progressBar.setIndeterminate(true);
+        progressBar.setVisible(false);
+        add(progressBar);
 
         liveAqiDiv = new Div();
         add(liveAqiDiv);
@@ -46,50 +54,84 @@ public class AqiView extends VerticalLayout {
 
     public void updateAqiForCity(String city) {
         if (city == null || city.isEmpty()) return;
+        this.currentCity = city;
 
-        currentCity = city;
+        setLoadingState(true);
 
-        liveAqiDiv.removeAll();
-        try {
-            JsonObject data = CurrentDataFetcher.getCurrentDataForCity(city);
-            if (data != null && data.has("aqi")) {
-                JsonObject aqi = data.getAsJsonObject("aqi");
-                liveAqiDiv.add(new H2("🌫 Current AQI"));
-
-                for (String key : aqi.keySet()) {
-                    liveAqiDiv.add(new Span(key + ": " + aqi.get(key).getAsString()));
-                    liveAqiDiv.add(new Div()); // line break
-                }
-            } else {
-                liveAqiDiv.add(new Span("⚠️ No current AQI data for " + city));
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return new CurrentDataFetcher().getCurrentDataForCity(city);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        } catch (Exception e) {
-            liveAqiDiv.add(new Span("⚠️ Failed to load current AQI: " + e.getMessage()));
-        }
-
-        historicalDiv.removeAll();
-        historicalDiv.add(new Span("🕰 Select a date to view historical AQI..."));
+        }).thenAccept(data -> {
+            getUI().ifPresent(ui -> ui.access(() -> {
+                liveAqiDiv.removeAll();
+                if (data != null && data.has("aqi")) {
+                    JsonObject aqi = data.getAsJsonObject("aqi");
+                    liveAqiDiv.add(new H2("🌫 Current AQI"));
+                    for (String key : aqi.keySet()) {
+                        liveAqiDiv.add(new Span(key + ": " + aqi.get(key).getAsString()));
+                        liveAqiDiv.add(new Div()); // line break
+                    }
+                } else {
+                    liveAqiDiv.add(new Span("No current AQI data for " + city));
+                }
+                resetHistoricalView();
+                setLoadingState(false);
+            }));
+        }).exceptionally(ex -> {
+            getUI().ifPresent(ui -> ui.access(() -> {
+                liveAqiDiv.removeAll();
+                liveAqiDiv.add(new Span("Failed to load current AQI: " + ex.getMessage()));
+                resetHistoricalView();
+                setLoadingState(false);
+            }));
+            return null;
+        });
     }
 
     private void updateHistoricalAqi(String city, LocalDate date) {
         historicalDiv.removeAll();
-        try {
-            JsonObject historicalData = HistoricalDataFetchHelper.fetchHistoricalData(city, date);
-            if (historicalData == null || !historicalData.has("aqi")) {
-                historicalDiv.add(new Span("⚠️ No historical AQI for " + city + " on " + date));
-                return;
+        historicalDiv.add(new Span("Loading historical data..."));
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return HistoricalDataFetchHelper.fetchHistoricalData(city, date);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-
-            JsonObject aqi = historicalData.getAsJsonObject("aqi");
-            historicalDiv.add(new H2("🕰 Historical AQI (" + date + ")"));
-
-            for (String key : aqi.keySet()) {
-                historicalDiv.add(new Span(key + ": " + aqi.get(key).getAsString()));
-                historicalDiv.add(new Div()); // line break
-            }
-
-        } catch (Exception e) {
-            historicalDiv.add(new Span("⚠️ Failed to load historical AQI: " + e.getMessage()));
-        }
+        }).thenAccept(historicalData -> {
+            getUI().ifPresent(ui -> ui.access(() -> {
+                historicalDiv.removeAll();
+                if (historicalData == null || !historicalData.has("aqi")) {
+                    historicalDiv.add(new Span("No historical AQI for " + city + " on " + date));
+                    return;
+                }
+                JsonObject aqi = historicalData.getAsJsonObject("aqi");
+                historicalDiv.add(new H2("🕰 Historical AQI (" + date + ")"));
+                for (String key : aqi.keySet()) {
+                    historicalDiv.add(new Span(key + ": " + aqi.get(key).getAsString()));
+                    historicalDiv.add(new Div()); // line break
+                }
+            }));
+        }).exceptionally(ex -> {
+            getUI().ifPresent(ui -> ui.access(() -> {
+                historicalDiv.removeAll();
+                historicalDiv.add(new Span("Failed to load historical AQI: " + ex.getMessage()));
+            }));
+            return null;
+        });
+    }
+    
+    private void setLoadingState(boolean isLoading) {
+        progressBar.setVisible(isLoading);
+        liveAqiDiv.setVisible(!isLoading);
+        historicalDatePicker.setVisible(!isLoading);
+        historicalDiv.setVisible(!isLoading);
+    }
+    
+    private void resetHistoricalView() {
+        historicalDiv.removeAll();
+        historicalDiv.add(new Span("Select a date to view historical AQI..."));
     }
 }

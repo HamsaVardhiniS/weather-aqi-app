@@ -2,10 +2,10 @@ package com.myapp.weatheraqi.ui;
 
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Footer;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
@@ -40,27 +40,29 @@ public class MainView extends VerticalLayout {
         ComboBox<String> citySelector = new ComboBox<>("Select City");
         List<String> cities = Arrays.asList(
                 "Amaravati", "Guwahati", "Patna", "Mumbai", "Ahmedabad",
-                "Shimla", "Ranchi", "Bangalore", "Thiruvanthapuram",
+                "Shimla", "Ranchi", "Bangalore", "Thiruvananthapuram",
                 "Bhopal", "Chandigarh", "Jaipur", "Gangtok", "Chennai",
                 "Hyderabad", "Lucknow", "Dehradun", "Kolkata", "Port Blair",
                 "Srinagar", "New Delhi", "Puducherry"
         );
         citySelector.setItems(cities);
-        citySelector.setValue("Chennai"); // default
+        citySelector.setValue("Chennai");
 
         aqiView = new AqiView();
         weatherView = new WeatherView();
-
+        
         weatherView.updateWeatherForCity(citySelector.getValue());
         aqiView.updateAqiForCity(citySelector.getValue());
 
         Tab aqiTab = new Tab("AQI 🌫️");
         Tab weatherTab = new Tab("Weather 🌞");
         Tabs tabs = new Tabs(aqiTab, weatherTab);
+        tabs.setSelectedTab(weatherTab);
 
         contentWrapper = new VerticalLayout();
         contentWrapper.setSizeFull();
-        contentWrapper.add(aqiView);
+        contentWrapper.setPadding(false);
+        contentWrapper.add(weatherView);
 
         tabs.addSelectedChangeListener(event -> {
             contentWrapper.removeAll();
@@ -73,25 +75,29 @@ public class MainView extends VerticalLayout {
 
         citySelector.addValueChangeListener(event -> {
             String selectedCity = event.getValue();
-            if (selectedCity != null) {
-                weatherView.updateWeatherForCity(selectedCity);
-                aqiView.updateAqiForCity(selectedCity);
+            if (selectedCity == null || selectedCity.trim().isEmpty()) {
+                return;
             }
+
+            Notification notification = Notification.show("Fetching new data for " + selectedCity + "...", 3000, Notification.Position.BOTTOM_CENTER);
+            notification.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+
+            weatherView.updateWeatherForCity(selectedCity);
+            aqiView.updateAqiForCity(selectedCity);
         });
 
-        Footer footer = new Footer();
-        footer.setWidthFull();
-        footer.getStyle()
-                .set("background-color", "#0A2342")
-                .set("color", "white")
-                .set("text-align", "center")
-                .set("padding", "0.5rem");
-        footer.add(new Span("© 2025 Weather & AQI App • Built with Spring Boot + Vaadin"));
+        Div controls = new Div(citySelector, tabs);
+        controls.getStyle()
+                .set("padding-left", "1rem")
+                .set("padding-right", "1rem");
 
-        Div contentArea = new Div(citySelector, tabs, contentWrapper);
-        contentArea.getStyle().set("padding", "1rem").set("flex", "1");
+        Div contentArea = new Div(controls, contentWrapper);
+        contentArea.getStyle()
+                .set("padding-top", "1rem")
+                .set("flex", "1");
+        contentArea.setSizeFull();
 
-        add(header, contentArea, footer);
+        add(header, contentArea);
         expand(contentArea);
     }
 }

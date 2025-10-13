@@ -48,6 +48,14 @@
             <version>8.0.33</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.knowm.xchart</groupId>
+            <artifactId>xchart</artifactId>
+            <version>3.8.1</version>
+        </dependency>
+
+
+
         <!-- Gson for JSON parsing -->
         <dependency>
             <groupId>com.google.code.gson</groupId>

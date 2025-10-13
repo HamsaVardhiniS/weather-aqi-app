@@ -1,79 +1,107 @@
 package com.myapp.weatheraqi.backend;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Time;
-import java.sql.Types;
-import java.time.LocalDate;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.sql.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-public class YesterdayDataFetcher {
-
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
-    private static final String DB_USER = "root";
-    private static final String DB_PASS = "Vruksha@2014";
+public class YesterdayDataFetcher extends DataFetcher {
 
     public static void main(String[] args) {
+        new YesterdayDataFetcher().run();
+    }
+
+    @Override
+    public void run() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
+        System.out.println("Fetching data for: " + yesterday);
+
+        int numberOfThreads = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
-            Statement stmt = conn.createStatement();
-            ResultSet cities = stmt.executeQuery("SELECT city_id, latitude, longitude FROM city");
-
-            while (cities.next()) {
-                int cityId = cities.getInt("city_id");
-                double lat = cities.getDouble("latitude");
-                double lon = cities.getDouble("longitude");
-
-                // Weather API
-                String weatherUrl = String.format(
-                        "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f" +
-                                "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min," +
-                                "sunrise,sunset,daylight_duration,sunshine_duration,rain_sum,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max," +
-                                "wind_direction_10m_dominant,temperature_2m_mean,apparent_temperature_mean" +
-                                "&timezone=auto&start_date=%s&end_date=%s",
-                        lat, lon, yesterday, yesterday
-                );
-
-                // AQI API
-                String aqiUrl = String.format(
-                        "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.4f&longitude=%.4f" +
-                                "&hourly=pm2_5,pm10,carbon_monoxide,carbon_dioxide,nitrogen_dioxide,sulphur_dioxide,ozone,methane" +
-                                "&timezone=auto&start_date=%s&end_date=%s",
-                        lat, lon, yesterday, yesterday
-                );
-
-                JsonObject weatherData = JsonParser.parseString(fetchAPI(weatherUrl))
-                        .getAsJsonObject().getAsJsonObject("daily");
-                JsonObject aqiData = JsonParser.parseString(fetchAPI(aqiUrl))
-                        .getAsJsonObject().getAsJsonObject("hourly");
-
-                insertWeatherData(conn, cityId, yesterday, weatherData);
-                insertAqiData(conn, cityId, yesterday, aqiData);
+            List<CityInfo> cities = new ArrayList<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT city_id, city_name, latitude, longitude FROM city")) {
+                while (rs.next()) {
+                    cities.add(new CityInfo(
+                            rs.getInt("city_id"),
+                            rs.getString("city_name"),
+                            rs.getDouble("latitude"),
+                            rs.getDouble("longitude")
+                    ));
+                }
             }
 
-            System.out.println("✅ Yesterday's weather + AQI inserted successfully!");
-
+            for (CityInfo city : cities) {
+                executor.submit(() -> {
+                    try {
+                        processCity(city, yesterday);
+                    } catch (Exception e) {
+                        System.err.println("Failed to process data for " + city.cityName);
+                        e.printStackTrace();
+                    }
+                });
+            }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            System.out.println("All tasks submitted. Waiting for completion...");
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(30, TimeUnit.MINUTES)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+            }
+        }
+        System.out.println("Yesterday's data fetching process finished.");
+    }
+
+    private void processCity(CityInfo city, LocalDate date) throws Exception {
+        System.out.println("Processing city: " + city.cityName);
+
+        String weatherUrl = String.format(
+                "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f" +
+                        "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min," +
+                        "sunrise,sunset,daylight_duration,sunshine_duration,rain_sum,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max," +
+                        "wind_direction_10m_dominant,temperature_2m_mean,apparent_temperature_mean" +
+                        "&timezone=auto&start_date=%s&end_date=%s",
+                city.latitude, city.longitude, date, date);
+
+        String aqiUrl = String.format(
+                "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.4f&longitude=%.4f" +
+                        "&hourly=pm2_5,pm10,carbon_monoxide,carbon_dioxide,nitrogen_dioxide,sulphur_dioxide,ozone,methane" +
+                        "&timezone=auto&start_date=%s&end_date=%s",
+                city.latitude, city.longitude, date, date);
+
+        CompletableFuture<String> weatherFuture = fetchAPIAsync(weatherUrl);
+        CompletableFuture<String> aqiFuture = fetchAPIAsync(aqiUrl);
+
+        CompletableFuture.allOf(weatherFuture, aqiFuture).join();
+
+        JsonObject weatherData = JsonParser.parseString(weatherFuture.get()).getAsJsonObject().getAsJsonObject("daily");
+        JsonObject aqiData = JsonParser.parseString(aqiFuture.get()).getAsJsonObject().getAsJsonObject("hourly");
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
+            insertWeatherData(conn, city.cityId, date, weatherData);
+            insertAqiData(conn, city.cityId, date, aqiData);
+            System.out.println("Successfully inserted data for " + city.cityName);
         }
     }
 
-    private static void insertWeatherData(Connection conn, int cityId, LocalDate date, JsonObject weather) throws SQLException {
-        String sql = "INSERT INTO historical_weather VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    private record CityInfo(int cityId, String cityName, double latitude, double longitude) {}
+
+    private void insertWeatherData(Connection conn, int cityId, LocalDate date, JsonObject weather) throws SQLException {
+        String sql = "INSERT INTO historical_weather VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE temperature_2m_max=VALUES(temperature_2m_max)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, cityId);
             ps.setDate(2, Date.valueOf(date));
@@ -82,10 +110,8 @@ public class YesterdayDataFetcher {
             ps.setBigDecimal(5, getDecimal(weather, "temperature_2m_min"));
             ps.setBigDecimal(6, getDecimal(weather, "apparent_temperature_max"));
             ps.setBigDecimal(7, getDecimal(weather, "apparent_temperature_min"));
-
             ps.setTime(8, Time.valueOf(getTime(weather, "sunrise")));
             ps.setTime(9, Time.valueOf(getTime(weather, "sunset")));
-
             ps.setInt(10, getInt(weather, "daylight_duration"));
             ps.setInt(11, getInt(weather, "sunshine_duration"));
             ps.setBigDecimal(12, getDecimal(weather, "wind_gusts_10m_max"));
@@ -95,13 +121,12 @@ public class YesterdayDataFetcher {
             ps.setBigDecimal(16, getDecimal(weather, "precipitation_sum"));
             ps.setBigDecimal(17, getDecimal(weather, "temperature_2m_mean"));
             ps.setBigDecimal(18, getDecimal(weather, "apparent_temperature_mean"));
-
             ps.executeUpdate();
         }
     }
 
-    private static void insertAqiData(Connection conn, int cityId, LocalDate date, JsonObject aqi) throws SQLException {
-        String sql = "INSERT INTO historical_aqi VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    private void insertAqiData(Connection conn, int cityId, LocalDate date, JsonObject aqi) throws SQLException {
+        String sql = "INSERT INTO historical_aqi VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE pm25_max=VALUES(pm25_max)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, cityId);
             ps.setDate(2, Date.valueOf(date));
@@ -127,14 +152,9 @@ public class YesterdayDataFetcher {
             ps.executeUpdate();
         }
     }
-
-    private static String fetchAPI(String url) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString()).body();
-    }
-
-    private static double[] getMinMax(JsonArray arr) {
+    
+    private double[] getMinMax(JsonArray arr) {
+        if (arr == null) return new double[]{Double.NaN, Double.NaN};
         double min = Double.MAX_VALUE, max = -Double.MAX_VALUE;
         for (int i = 0; i < arr.size(); i++) {
             if (!arr.get(i).isJsonNull()) {
@@ -146,12 +166,12 @@ public class YesterdayDataFetcher {
         return (min == Double.MAX_VALUE) ? new double[]{Double.NaN, Double.NaN} : new double[]{min, max};
     }
 
-    private static void setNullableDouble(PreparedStatement ps, int idx, double val) throws SQLException {
+    private void setNullableDouble(PreparedStatement ps, int idx, double val) throws SQLException {
         if (Double.isNaN(val) || Double.isInfinite(val)) ps.setNull(idx, Types.DOUBLE);
         else ps.setDouble(idx, val);
     }
 
-    private static java.math.BigDecimal getDecimal(JsonObject obj, String key) {
+    private java.math.BigDecimal getDecimal(JsonObject obj, String key) {
         JsonArray arr = obj.getAsJsonArray(key);
         if (arr != null && arr.size() > 0 && !arr.get(0).isJsonNull()) {
             return arr.get(0).getAsBigDecimal();
@@ -159,15 +179,18 @@ public class YesterdayDataFetcher {
         return null;
     }
 
-    private static int getInt(JsonObject obj, String key) {
+    private int getInt(JsonObject obj, String key) {
         JsonArray arr = obj.getAsJsonArray(key);
         return (arr != null && arr.size() > 0 && !arr.get(0).isJsonNull()) ? arr.get(0).getAsInt() : 0;
     }
 
-    private static String getTime(JsonObject obj, String key) {
+    private String getTime(JsonObject obj, String key) {
         JsonArray arr = obj.getAsJsonArray(key);
         if (arr != null && arr.size() > 0 && !arr.get(0).isJsonNull()) {
-            return arr.get(0).getAsString().substring(11) + ":00";
+            String dateTime = arr.get(0).getAsString();
+            if (dateTime.length() >= 16) {
+                return dateTime.substring(11, 16) + ":00";
+            }
         }
         return "00:00:00";
     }

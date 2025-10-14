@@ -17,7 +17,7 @@ public class CurrentDataFetcher {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = "Vruksha@2014";
+    private static final String DB_PASS = "pass";
 
     private static final String WEATHER_PARAMS = "temperature_2m,relative_humidity_2m,apparent_temperature,is_day," +
             "precipitation,rain,weather_code,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m";

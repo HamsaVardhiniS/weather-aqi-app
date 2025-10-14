@@ -17,7 +17,7 @@ public class WeatherForecastFetcher {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = "Vruksha@2014";
+    private static final String DB_PASS = "pass";
 
     private static final String FORECAST_PARAMS =
             "weather_code,temperature_2m_max,apparent_temperature_max,apparent_temperature_min," +

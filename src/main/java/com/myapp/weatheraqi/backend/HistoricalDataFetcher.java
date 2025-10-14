@@ -63,7 +63,7 @@ public class HistoricalDataFetcher {
 
     static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     static final String DB_USER = "root";
-    static final String DB_PASS = "Vruksha@2014";
+    static final String DB_PASS = "pass";
 
     public static void main(String[] args) {
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {

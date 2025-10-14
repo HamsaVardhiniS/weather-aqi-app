@@ -24,7 +24,7 @@ public class YesterdayDataFetcher {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = "Vruksha@2014";
+    private static final String DB_PASS = "pass";
 
     public static void main(String[] args) {
         LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -65,7 +65,7 @@ public class YesterdayDataFetcher {
                 insertAqiData(conn, cityId, yesterday, aqiData);
             }
 
-            System.out.println("✅ Yesterday's weather + AQI inserted successfully!");
+            System.out.println(" Yesterday's weather + AQI inserted successfully!");
 
         } catch (Exception e) {
             e.printStackTrace();

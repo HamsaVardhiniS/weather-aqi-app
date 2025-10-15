@@ -10,12 +10,12 @@ import java.util.concurrent.CompletableFuture;
 public abstract class DataFetcher {
     protected static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     protected static final String DB_USER = "root";
-    protected static final String DB_PASS = "Vruksha@2014";
+    protected static final String DB_PASS = "Ritujaa@2006";
 
     protected static final HttpClient client = HttpClient.newHttpClient();
     public abstract void run();
 
-    protected CompletableFuture<String> fetchAPIAsync(String url) {
+    protected static CompletableFuture<String> fetchAPIAsync(String url) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();

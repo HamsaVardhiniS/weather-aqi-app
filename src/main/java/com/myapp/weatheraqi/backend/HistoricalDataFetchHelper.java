@@ -9,6 +9,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -16,7 +18,7 @@ public class HistoricalDataFetchHelper {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = "Vruksha@2014";
+    private static final String DB_PASS = "Ritujaa@2006";
 
     public static JsonObject fetchHistoricalData(String city, LocalDate date) throws Exception {
         return fetchHistoricalData(city, date, date);
@@ -61,13 +63,6 @@ public class HistoricalDataFetchHelper {
         return result;
     }
 
-    private static int getCityId(Connection conn, String city) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("SELECT city_id FROM city WHERE city_name=?")) {
-            ps.setString(1, city);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getInt("city_id") : -1;
-        }
-    }
 
     private static JsonArray fetchWeatherRange(Connection conn, int cityId, LocalDate startDate, LocalDate endDate) {
         JsonArray weatherArray = new JsonArray();
@@ -100,6 +95,96 @@ public class HistoricalDataFetchHelper {
             throw new RuntimeException("Database error fetching weather data", e);
         }
         return weatherArray;
+    }
+
+    public static JsonObject fetchLast7DaysAqi(String cityName) {
+        JsonObject result = new JsonObject();
+        JsonArray dates = new JsonArray();
+        JsonArray pm25Data = new JsonArray();
+        JsonArray pm10Data = new JsonArray();
+        JsonArray coData = new JsonArray();
+        JsonArray no2Data = new JsonArray();
+        JsonArray so2Data = new JsonArray();
+        JsonArray o3Data = new JsonArray();
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
+            int cityId = getCityId(conn, cityName);
+            if (cityId == -1) {
+                System.err.println("City not found: " + cityName);
+                return result;
+            }
+
+            String aqiQuery = "SELECT date, pm25_max, pm10_max, co_max, no2_max, so2_max, o3_max " +
+                    "FROM historical_aqi " +
+                    "WHERE city_id = ? " +
+                    "ORDER BY date DESC " +
+                    "LIMIT 7";
+
+            try (PreparedStatement ps = conn.prepareStatement(aqiQuery)) {
+                ps.setInt(1, cityId);
+                ResultSet rs = ps.executeQuery();
+
+                List<DayData> dataList = new ArrayList<>();
+                while (rs.next()) {
+                    DayData day = new DayData();
+                    day.date = rs.getDate("date").toLocalDate();
+                    day.pm25 = rs.getDouble("pm25_max");
+                    day.pm10 = rs.getDouble("pm10_max");
+                    day.co = rs.getDouble("co_max");
+                    day.no2 = rs.getDouble("no2_max");
+                    day.so2 = rs.getDouble("so2_max");
+                    day.o3 = rs.getDouble("o3_max");
+                    dataList.add(day);
+                }
+
+                // Reverse for chronological order
+                for (int i = dataList.size() - 1; i >= 0; i--) {
+                    DayData day = dataList.get(i);
+                    
+                    String dayName = day.date.getDayOfWeek().toString().substring(0, 3);
+                    dayName = dayName.substring(0, 1).toUpperCase() + dayName.substring(1).toLowerCase();
+                    dates.add(dayName);
+                    
+                    pm25Data.add(Math.round(day.pm25 * 10) / 10.0);
+                    pm10Data.add(Math.round(day.pm10 * 10) / 10.0);
+                    coData.add(Math.round(day.co * 10) / 10.0);
+                    no2Data.add(Math.round(day.no2 * 10) / 10.0);
+                    so2Data.add(Math.round(day.so2 * 10) / 10.0);
+                    o3Data.add(Math.round(day.o3 * 10) / 10.0);
+                }
+            }
+
+            result.add("dates", dates);
+            result.add("pm25", pm25Data);
+            result.add("pm10", pm10Data);
+            result.add("co", coData);
+            result.add("no2", no2Data);
+            result.add("so2", so2Data);
+            result.add("o3", o3Data);
+
+        } catch (SQLException e) {
+            System.err.println("Error fetching 7-day AQI data: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    private static int getCityId(Connection conn, String cityName) throws SQLException {
+        String cityQuery = "SELECT city_id FROM city WHERE city_name = ?";
+        try (PreparedStatement ps = conn.prepareStatement(cityQuery)) {
+            ps.setString(1, cityName);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("city_id");
+            }
+        }
+        return -1;
+    }
+
+    private static class DayData {
+        LocalDate date;
+        double pm25, pm10, co, no2, so2, o3;
     }
 
     private static JsonArray fetchAqiRange(Connection conn, int cityId, LocalDate startDate, LocalDate endDate) {

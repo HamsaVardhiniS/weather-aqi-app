@@ -18,13 +18,13 @@ public class CurrentDataFetcher extends DataFetcher {
     public void run() {
     }
 
-    public JsonObject getCurrentDataForCity(String cityName) throws Exception {
+    public static JsonObject getCurrentDataForCity(String cityName) throws Exception {
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
             return getCurrentDataForCity(conn, cityName);
         }
     }
 
-    public JsonObject getCurrentDataForCity(Connection conn, String cityName) throws Exception {
+    public static JsonObject getCurrentDataForCity(Connection conn, String cityName) throws Exception {
         double[] latLon = getLatLon(conn, cityName);
         if (latLon == null) {
             throw new Exception("City not found: " + cityName);
@@ -62,7 +62,7 @@ public class CurrentDataFetcher extends DataFetcher {
         return merged;
     }
 
-    private double[] getLatLon(Connection conn, String cityName) throws SQLException {
+    private static double[] getLatLon(Connection conn, String cityName) throws SQLException {
         String sql = "SELECT latitude, longitude FROM city WHERE city_name = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, cityName);

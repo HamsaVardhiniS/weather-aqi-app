@@ -24,7 +24,7 @@ public class HistoricalDataFetcher extends DataFetcher {
         int numberOfThreads = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
         LocalDate start = LocalDate.of(2025, 6, 1);
-        LocalDate end = LocalDate.of(2025, 8, 28);
+        LocalDate end = LocalDate.of(2025, 10, 13);
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
             List<CityInfo> cities = getCities(conn);

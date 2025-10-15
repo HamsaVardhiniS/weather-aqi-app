@@ -54,15 +54,15 @@ public class MainView extends VerticalLayout {
         weatherView.updateWeatherForCity(citySelector.getValue());
         aqiView.updateAqiForCity(citySelector.getValue());
 
-        Tab aqiTab = new Tab("AQI 🌫️");
-        Tab weatherTab = new Tab("Weather 🌞");
+        Tab aqiTab = new Tab("AQI");
+        Tab weatherTab = new Tab("Weather");
         Tabs tabs = new Tabs(aqiTab, weatherTab);
-        tabs.setSelectedTab(weatherTab);
+        tabs.setSelectedTab(aqiTab);
 
         contentWrapper = new VerticalLayout();
         contentWrapper.setSizeFull();
         contentWrapper.setPadding(false);
-        contentWrapper.add(weatherView);
+        contentWrapper.add(aqiView);
 
         tabs.addSelectedChangeListener(event -> {
             contentWrapper.removeAll();

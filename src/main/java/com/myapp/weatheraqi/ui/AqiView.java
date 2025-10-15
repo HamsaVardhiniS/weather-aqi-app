@@ -1,16 +1,5 @@
 package com.myapp.weatheraqi.ui;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.myapp.weatheraqi.backend.CurrentDataFetcher;
@@ -19,8 +8,8 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasComponents;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dependency.JavaScript;
-import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
@@ -32,12 +21,18 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 @JavaScript("https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js")
 public class AqiView extends VerticalLayout {
-
     private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = "Vruksha@2014";
+    private static final String DB_PASS = "Ritujaa@2006";
 
     private final Div liveAqiDiv;
     private final Div historicalDiv;
@@ -52,15 +47,26 @@ public class AqiView extends VerticalLayout {
         this();
         updateAqiForCity(city);
     }
-public AqiView() {
+    
+    public AqiView() {
+        
+    
+        getStyle()
+        .set("min-height", "100vh")           // full viewport height
+        .set("display", "flex")
+        .set("flex-direction", "column")
+        .set("background-image", "url('images/bg.jpg')")
+        .set("background-size", "cover")
+        .set("background-position", "center center")
+        .set("background-repeat", "no-repeat")
+        .set("background-attachment", "fixed") // optional: keeps image fixed on scroll
+        .set("overflow", "auto");
+
+    // 🔹 General layout config
     setSizeFull();
     setSpacing(true);
     setPadding(true);
-    getStyle()
-            .set("background-image", "url('images/bg.jpg')")
-            .set("background-size", "cover")
-            .set("background-position", "center center")
-            .set("background-repeat", "no-repeat");
+
 
     H2 mainTitle = new H2("Air Quality Index (AQI)");
     mainTitle.getStyle()
@@ -70,6 +76,7 @@ public AqiView() {
             .set("font-size", "2.5em");
     add(mainTitle);
 
+    // ----- Extreme Cities Section -----
     extremeCitiesContainer = new Div();
     extremeCitiesContainer.getStyle()
             .set("margin-bottom", "40px")
@@ -80,47 +87,34 @@ public AqiView() {
             .set("gap", "30px");
     add(extremeCitiesContainer);
     updateExtremeCitiesDisplay();
-    
+
+    // ----- Live AQI + Historical Section -----
     FlexLayout mainContentLayout = new FlexLayout();
-    mainContentLayout.setSizeFull();
-    mainContentLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-    mainContentLayout.setJustifyContentMode(FlexLayout.JustifyContentMode.CENTER);
-    mainContentLayout.getStyle().set("gap", "30px");
+mainContentLayout.setWidthFull();
+mainContentLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
+mainContentLayout.setJustifyContentMode(FlexLayout.JustifyContentMode.CENTER);
+mainContentLayout.getStyle()
+        .set("gap", "30px")
+        .set("align-items", "flex-start");
 
-    liveAqiDiv = new Div();
-    liveAqiDiv.getStyle()
-            .set("flex-grow", "1")
-            .set("min-width", "450px")
-            .set("max-width", "55%");
-    mainContentLayout.add(liveAqiDiv);
+    FlexLayout wrapper = new FlexLayout();
+wrapper.setWidthFull();
+wrapper.setJustifyContentMode(FlexLayout.JustifyContentMode.CENTER);
 
-    historicalDiv = new Div();
-    historicalDiv.getStyle()
-            .set("flex-grow", "1")
-            .set("min-width", "450px")
-            .set("max-width", "55%");
+liveAqiDiv = new Div();
+liveAqiDiv.getStyle()
+        .set("width", "500px") // can use % if you want responsive
+        .set("background", "linear-gradient(135deg, #ffffffff 0%, #ffffffff 100%)")
+        .set("padding", "20px")
+        .set("border-radius", "15px")
+        .set("box-shadow", "0 10px 30px rgba(0,0,0,0.1)");
 
-    VerticalLayout historicalSectionWrapper = new VerticalLayout();
-    historicalSectionWrapper.setSpacing(true);
-    historicalSectionWrapper.setPadding(false);
-    historicalSectionWrapper.getStyle()
-            .set("min-width", "450px")
-            .set("max-width", "55%")
-            .set("flex-grow", "1");
+wrapper.add(liveAqiDiv);
+add(wrapper);
 
-    historicalDatePicker = new DatePicker("Select Historical Date");
-    historicalDatePicker.getStyle().set("width", "100%");
-    historicalDatePicker.addValueChangeListener(event -> {
-        LocalDate selectedDate = event.getValue();
-        if (selectedDate != null && currentCity != null) {
-            updateHistoricalAqi(currentCity, selectedDate);
-        }
-    });
 
-    historicalSectionWrapper.add(historicalDatePicker, historicalDiv);
-    mainContentLayout.add(historicalSectionWrapper);
-    add(mainContentLayout);
-
+ 
+    // ----- Charts Section (Placed BELOW AQI Meter) -----
     VerticalLayout chartsSection = new VerticalLayout();
     chartsSection.setWidthFull();
     chartsSection.setSpacing(true);
@@ -153,11 +147,40 @@ public AqiView() {
     chartContainer.add(canvasWrapper);
     chartsSection.add(chartContainer);
 
+    // Add other charts here (comparison, radar, etc.)
     createCurrentPollutantsChart();
     createPollutantComparisonChart();
     createRadarChart();
-
     add(chartsSection); 
+
+       historicalDiv = new Div();
+historicalDiv.getStyle()
+        .set("flex", "1 1 500px")
+        .set("max-width", "48%")
+        .set("background", "white")
+        .set("padding", "20px")
+        .set("border-radius", "15px")
+        .set("box-shadow", "0 10px 30px rgba(0,0,0,0.08)")
+        .set("margin", "0 auto");        // centers horizontally
+
+    VerticalLayout historicalSectionWrapper = new VerticalLayout();
+historicalSectionWrapper.setPadding(false);
+historicalSectionWrapper.setSpacing(true);
+historicalSectionWrapper.getStyle()
+        .set("width", "100%");
+
+historicalDatePicker = new DatePicker("Select Historical Date");
+historicalDatePicker.setWidthFull();
+historicalDatePicker.addValueChangeListener(event -> {
+    LocalDate selectedDate = event.getValue();
+    if (selectedDate != null && currentCity != null) {
+        updateHistoricalAqi(currentCity, selectedDate);
+    }
+});
+
+historicalSectionWrapper.add(historicalDatePicker, historicalDiv);
+mainContentLayout.add(historicalSectionWrapper);
+add(mainContentLayout);
 
     cityRankingContainer = new Div();
     cityRankingContainer.getStyle()
@@ -170,6 +193,7 @@ public AqiView() {
     add(cityRankingContainer);
     updateCityRankingTable();
 
+    // ----- Chart.js Load Verification -----
     getElement().executeJs(
             "setTimeout(() => {" +
                     "  console.log('Chart.js loaded:', typeof Chart !== 'undefined');" +
@@ -183,13 +207,14 @@ public AqiView() {
 }
 
 
+
     public void updateAqiForCity(String city) {
     if (city == null || city.isEmpty()) return;
     currentCity = city;
     liveAqiDiv.removeAll();
     
     try {
-        JsonObject data = new CurrentDataFetcher().getCurrentDataForCity(city);
+        JsonObject data = CurrentDataFetcher.getCurrentDataForCity(city);
         if (data != null && data.has("aqi")) {
             JsonObject aqi = data.getAsJsonObject("aqi");
             H2 currentAqiHeader = new H2("Current AQI for " + city);
@@ -224,7 +249,7 @@ public AqiView() {
             Div rightHeader = new Div();
             rightHeader.getStyle()
                     .set("position", "relative")
-                    .set("background", "linear-gradient(135deg, #667eea 0%, #764ba2 100%)")
+                    .set("background", "linear-gradient(135deg, #667eea 0%, #667eea 0%)")
                     .set("color", "white")
                     .set("padding", "20px 25px")
                     .set("border-radius", "15px")
@@ -286,14 +311,18 @@ public AqiView() {
     }
 
     historicalDiv.removeAll();
-    Span selectDateSpan = new Span("Select a date to view historical AQI...");
-    selectDateSpan.getStyle()
-            .set("color", "#7f8c8d")
-            .set("font-style", "italic")
-            .set("margin-top", "20px")
-            .set("text-align", "center")
-            .set("display", "block");
-    historicalDiv.add(selectDateSpan);
+    
+Span selectDateSpan = new Span("Select a date to view historical AQI");
+selectDateSpan.getStyle()
+        .set("color", "#7f8c8d")
+        .set("font-style", "italic")
+        .set("font-size", "0.75em")      
+        .set("text-align", "center")
+        .set("display", "block")
+        .set("margin", "10px auto");     
+
+historicalDiv.add(selectDateSpan);
+
 
     updateChartForCity(city);
 }
@@ -304,9 +333,7 @@ private void updateChartForCity(String city) {
     if (chartContainer == null || city == null) return;
 
     try {
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(6);
-        JsonObject chartData = HistoricalDataFetchHelper.fetchHistoricalData(city, startDate, endDate);
+        JsonObject chartData = HistoricalDataFetchHelper.fetchLast7DaysAqi(city);
 
         if (chartData == null || !chartData.has("dates")) {
             System.err.println("No chart data available for " + city);
@@ -719,7 +746,8 @@ private void updateRadarChart(JsonObject aqi) {
         System.err.println("Error updating radar chart: " + e.getMessage());
     }
 }
-    private void updateHistoricalAqi(String city, LocalDate date) {
+    
+ private void updateHistoricalAqi(String city, LocalDate date) {
         historicalDiv.removeAll();
         try {
             JsonObject historicalData = HistoricalDataFetchHelper.fetchHistoricalData(city, date);
@@ -733,7 +761,8 @@ private void updateRadarChart(JsonObject aqi) {
                     .set("color", "#34495e")
                     .set("margin-bottom", "25px")
                     .set("text-align", "center")
-                    .set("font-size", "2em");
+                    .set("font-size", "2em")
+                    .set("animation", "fadeInUp 0.5s ease-out");
             historicalDiv.add(historicalAqiHeader);
 
             double calculatedAqi = calculateIndianAQI(aqi);
@@ -808,7 +837,6 @@ private void updateRadarChart(JsonObject aqi) {
             historicalDiv.add(new Span("Failed to load historical AQI: " + e.getMessage()));
         }
     }
-
     private void updateExtremeCitiesDisplay() {
         extremeCitiesContainer.removeAll();
         H2 header = new H2("India's Air Quality Extremes 🇮🇳");
@@ -908,16 +936,11 @@ private void updateRadarChart(JsonObject aqi) {
 
         for (String city : cities) {
             try {
-                // Use a different name for the JsonObject to avoid conflict with the List named 'data'
-                JsonObject cityJsonData = new CurrentDataFetcher().getCurrentDataForCity(city);
-                
-                // Check the correct variable (cityJsonData) instead of the non-existent 'json'
-                if (cityJsonData != null && cityJsonData.has("aqi")) {
-                    JsonObject aqi = cityJsonData.getAsJsonObject("aqi");
+                JsonObject json = CurrentDataFetcher.getCurrentDataForCity(city);
+                if (json != null && json.has("aqi")) {
+                    JsonObject aqi = json.getAsJsonObject("aqi");
                     double calcAqi = calculateIndianAQI(aqi);
                     String cat = getAqiCategory(calcAqi);
-
-                    // Add the new object to the List 'data', not the JsonObject
                     data.add(new CityAqiData(city, calcAqi, cat, null));
                 }
             } catch (Exception e) {
@@ -1036,13 +1059,15 @@ private void updateRadarChart(JsonObject aqi) {
                 .set("position", "relative")
                 .set("margin-bottom", "15px")
                 .set("cursor", "pointer")
-                .set("transition", "all 0.3s ease")
-                .set("width", "100%");
+                .set("transition", "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)")
+                .set("width", "100%")
+                .set("animation", "fadeInUp 0.6s ease-out");
+        
         cardContainer.getElement().addEventListener("mouseenter", e -> {
             cardContainer.getStyle()
-                    .set("transform", "scale(1.02) translateX(-5px)")
-                    .set("filter", "brightness(1.1)")
-                    .set("box-shadow", "0 8px 25px rgba(0, 123, 204, 0.4)");
+                    .set("transform", "scale(1.03) translateX(-8px)")
+                    .set("filter", "brightness(1.15)")
+                    .set("box-shadow", "0 12px 30px rgba(0, 123, 204, 0.5)");
         });
         cardContainer.getElement().addEventListener("mouseleave", e -> {
             cardContainer.getStyle()
@@ -1061,7 +1086,15 @@ private void updateRadarChart(JsonObject aqi) {
                 .set("position", "absolute")
                 .set("top", "0")
                 .set("left", "0")
-                .set("z-index", "1");
+                .set("z-index", "1")
+                .set("transition", "transform 0.4s ease");
+        
+        backgroundImage.getElement().addEventListener("mouseenter", e -> {
+            backgroundImage.getStyle().set("transform", "scale(1.05)");
+        });
+        backgroundImage.getElement().addEventListener("mouseleave", e -> {
+            backgroundImage.getStyle().set("transform", "scale(1)");
+        });
 
         Div contentContainer = new Div();
         contentContainer.getStyle()
@@ -1078,22 +1111,32 @@ private void updateRadarChart(JsonObject aqi) {
                 .set("color", "white")
                 .set("font-weight", "600")
                 .set("font-size", "16px")
-                .set("text-shadow", "0 1px 3px rgba(0, 0, 0, 0.3)");
+                .set("text-shadow", "0 2px 4px rgba(0, 0, 0, 0.4)")
+                .set("transition", "all 0.3s ease");
 
         Span valueSpan = new Span(value);
         valueSpan.getStyle()
                 .set("color", "white")
                 .set("font-weight", "700")
                 .set("font-size", "18px")
-                .set("text-shadow", "0 1px 3px rgba(0, 0, 0, 0.3)");
+                .set("text-shadow", "0 2px 4px rgba(0, 0, 0, 0.4)")
+                .set("transition", "all 0.3s ease");
 
         Span iconSpan = new Span(getHealthIcon(title));
         iconSpan.getStyle()
-    .set("display", "flex")
-    .set("align-items", "center")
-    .set("justify-content", "center")
-    .set("font-size", "24px")
-    .set("margin-right", "10px");
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("justify-content", "center")
+                .set("font-size", "24px")
+                .set("margin-right", "10px")
+                .set("transition", "transform 0.3s ease");
+        
+        iconSpan.getElement().addEventListener("mouseenter", e -> {
+            iconSpan.getStyle().set("transform", "rotate(360deg) scale(1.2)");
+        });
+        iconSpan.getElement().addEventListener("mouseleave", e -> {
+            iconSpan.getStyle().set("transform", "rotate(0deg) scale(1)");
+        });
 
         HorizontalLayout leftContent = new HorizontalLayout();
         leftContent.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -1105,17 +1148,11 @@ private void updateRadarChart(JsonObject aqi) {
         parentLayout.add(cardContainer);
 
         if (isCriticalPollutant(title, value)) {
-            cardContainer.getElement().executeJs(
-                    "this.style.animation = 'pulse 2s infinite';" +
-                    "if (!document.querySelector('#pulseKeyframes')) {" +
-                    " const style = document.createElement('style');" +
-                    " style.id = 'pulseKeyframes';" +
-                    " style.innerHTML = '@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }';" +
-                    " document.head.appendChild(style);" +
-                    "}"
-            );
+            cardContainer.getStyle()
+                    .set("animation", "pulse 2s infinite, glow 2s ease-in-out infinite");
         }
     }
+
 
     private Image getHealthIcon(String pollutantType) {
     String imagePath;
@@ -1348,7 +1385,16 @@ private void updateRadarChart(JsonObject aqi) {
                 .set("border-radius", "12px")
                 .set("padding", "20px")
                 .set("margin-top", "20px")
-                .set("border-left", "4px solid #e17055");
+                .set("border-left", "4px solid #e17055")
+                .set("animation", "fadeInUp 1.3s ease-out")
+                .set("transition", "transform 0.3s ease");
+
+        insightsDiv.getElement().addEventListener("mouseenter", e -> {
+            insightsDiv.getStyle().set("transform", "translateX(5px)");
+        });
+        insightsDiv.getElement().addEventListener("mouseleave", e -> {
+            insightsDiv.getStyle().set("transform", "translateX(0)");
+        });
 
         H3 insightTitle = new H3("Historical Analysis");
         insightTitle.getStyle()
@@ -1363,19 +1409,18 @@ private void updateRadarChart(JsonObject aqi) {
 
         String dayOfWeek = date.getDayOfWeek().toString();
         String monthName = date.getMonth().toString();
-        insight.add(new Span("Data from " + dayOfWeek.toLowerCase() + " in " + monthName.toLowerCase()));
-        insight.add(new Span("Compare with current readings to track air quality trends"));
+        insight.add(new Span("Data from " + dayOfWeek.toLowerCase() + " in " + monthName.toLowerCase() + ". "));
+        insight.add(new Span("Compare with current readings to track air quality trends. "));
         double historicalAqi = calculateIndianAQI(aqi);
         if (historicalAqi > 150) {
-            insight.add(new Span("This was a poor air quality day - avoid outdoor activities"));
+            insight.add(new Span("This was a poor air quality day - avoid outdoor activities."));
         } else if (historicalAqi < 50) {
-            insight.add(new Span("This was a good air quality day - perfect for outdoor activities"));
+            insight.add(new Span("This was a good air quality day - perfect for outdoor activities."));
         }
 
         insightsDiv.add(insightTitle, insight);
         return insightsDiv;
     }
-
     private double calculateIndianAQI(JsonObject aqi) {
         double maxAqi = 0;
         double pm25 = aqi.has("pm2_5") ? aqi.get("pm2_5").getAsDouble() : (aqi.has("pm25_max") ? aqi.get("pm25_max").getAsDouble() : 0);

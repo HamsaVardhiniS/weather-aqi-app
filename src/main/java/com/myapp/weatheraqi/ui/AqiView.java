@@ -62,7 +62,6 @@ public AqiView() {
             .set("background-position", "center center")
             .set("background-repeat", "no-repeat");
 
-    // ----- Main Title -----
     H2 mainTitle = new H2("Air Quality Index (AQI)");
     mainTitle.getStyle()
             .set("color", "#2c3e50")
@@ -71,7 +70,6 @@ public AqiView() {
             .set("font-size", "2.5em");
     add(mainTitle);
 
-    // ----- Extreme Cities Section -----
     extremeCitiesContainer = new Div();
     extremeCitiesContainer.getStyle()
             .set("margin-bottom", "40px")
@@ -82,15 +80,13 @@ public AqiView() {
             .set("gap", "30px");
     add(extremeCitiesContainer);
     updateExtremeCitiesDisplay();
-
-    // ----- Live AQI + Historical Section -----
+    
     FlexLayout mainContentLayout = new FlexLayout();
     mainContentLayout.setSizeFull();
     mainContentLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
     mainContentLayout.setJustifyContentMode(FlexLayout.JustifyContentMode.CENTER);
     mainContentLayout.getStyle().set("gap", "30px");
 
-    // Live AQI Section
     liveAqiDiv = new Div();
     liveAqiDiv.getStyle()
             .set("flex-grow", "1")
@@ -98,7 +94,6 @@ public AqiView() {
             .set("max-width", "55%");
     mainContentLayout.add(liveAqiDiv);
 
-    // Historical Section
     historicalDiv = new Div();
     historicalDiv.getStyle()
             .set("flex-grow", "1")
@@ -124,9 +119,8 @@ public AqiView() {
 
     historicalSectionWrapper.add(historicalDatePicker, historicalDiv);
     mainContentLayout.add(historicalSectionWrapper);
-    add(mainContentLayout); // 🟢 Add this entire section FIRST
+    add(mainContentLayout);
 
-    // ----- Charts Section (Placed BELOW AQI Meter) -----
     VerticalLayout chartsSection = new VerticalLayout();
     chartsSection.setWidthFull();
     chartsSection.setSpacing(true);
@@ -159,7 +153,6 @@ public AqiView() {
     chartContainer.add(canvasWrapper);
     chartsSection.add(chartContainer);
 
-    // Add other charts here (comparison, radar, etc.)
     createCurrentPollutantsChart();
     createPollutantComparisonChart();
     createRadarChart();
@@ -177,7 +170,6 @@ public AqiView() {
     add(cityRankingContainer);
     updateCityRankingTable();
 
-    // ----- Chart.js Load Verification -----
     getElement().executeJs(
             "setTimeout(() => {" +
                     "  console.log('Chart.js loaded:', typeof Chart !== 'undefined');" +

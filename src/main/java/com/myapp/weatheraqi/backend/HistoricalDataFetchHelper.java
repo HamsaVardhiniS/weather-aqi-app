@@ -18,7 +18,21 @@ public class HistoricalDataFetchHelper {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = "Ritujaa@2006";
+    private static final String DB_PASS = "Vruksha@2014";
+
+    public static CompletableFuture<JsonObject> fetchHistoricalDataAsync(String city, LocalDate startDate, LocalDate endDate) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return fetchHistoricalData(city, startDate, endDate);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public static CompletableFuture<JsonObject> fetchHistoricalDataAsync(String city, LocalDate date) {
+         return fetchHistoricalDataAsync(city, date, date);
+    }
 
     public static JsonObject fetchHistoricalData(String city, LocalDate date) throws Exception {
         return fetchHistoricalData(city, date, date);
@@ -27,7 +41,6 @@ public class HistoricalDataFetchHelper {
     public static JsonObject fetchHistoricalData(String city, LocalDate startDate, LocalDate endDate) throws Exception {
         JsonObject result = new JsonObject();
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
-
             int cityId = getCityId(conn, city);
             if (cityId == -1) {
                 throw new Exception("City not found: " + city);
@@ -56,13 +69,11 @@ public class HistoricalDataFetchHelper {
                 result.add("weather", weatherArray);
                 result.add("aqi", aqiArray);
             }
-
         } catch (InterruptedException | ExecutionException e) {
             throw new Exception("Failed to fetch historical data in parallel", e);
         }
         return result;
     }
-
 
     private static JsonArray fetchWeatherRange(Connection conn, int cityId, LocalDate startDate, LocalDate endDate) {
         JsonArray weatherArray = new JsonArray();
@@ -113,17 +124,14 @@ public class HistoricalDataFetchHelper {
                 System.err.println("City not found: " + cityName);
                 return result;
             }
-
             String aqiQuery = "SELECT date, pm25_max, pm10_max, co_max, no2_max, so2_max, o3_max " +
                     "FROM historical_aqi " +
                     "WHERE city_id = ? " +
                     "ORDER BY date DESC " +
                     "LIMIT 7";
-
             try (PreparedStatement ps = conn.prepareStatement(aqiQuery)) {
                 ps.setInt(1, cityId);
                 ResultSet rs = ps.executeQuery();
-
                 List<DayData> dataList = new ArrayList<>();
                 while (rs.next()) {
                     DayData day = new DayData();
@@ -136,15 +144,11 @@ public class HistoricalDataFetchHelper {
                     day.o3 = rs.getDouble("o3_max");
                     dataList.add(day);
                 }
-
-                // Reverse for chronological order
                 for (int i = dataList.size() - 1; i >= 0; i--) {
                     DayData day = dataList.get(i);
-                    
                     String dayName = day.date.getDayOfWeek().toString().substring(0, 3);
                     dayName = dayName.substring(0, 1).toUpperCase() + dayName.substring(1).toLowerCase();
                     dates.add(dayName);
-                    
                     pm25Data.add(Math.round(day.pm25 * 10) / 10.0);
                     pm10Data.add(Math.round(day.pm10 * 10) / 10.0);
                     coData.add(Math.round(day.co * 10) / 10.0);
@@ -153,7 +157,6 @@ public class HistoricalDataFetchHelper {
                     o3Data.add(Math.round(day.o3 * 10) / 10.0);
                 }
             }
-
             result.add("dates", dates);
             result.add("pm25", pm25Data);
             result.add("pm10", pm10Data);
@@ -161,12 +164,10 @@ public class HistoricalDataFetchHelper {
             result.add("no2", no2Data);
             result.add("so2", so2Data);
             result.add("o3", o3Data);
-
         } catch (SQLException e) {
             System.err.println("Error fetching 7-day AQI data: " + e.getMessage());
             e.printStackTrace();
         }
-
         return result;
     }
 

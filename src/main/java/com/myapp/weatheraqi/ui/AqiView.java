@@ -23,16 +23,18 @@ import com.vaadin.flow.data.renderer.ComponentRenderer;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @JavaScript("https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js")
 public class AqiView extends VerticalLayout {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/weather_aqi";
     private static final String DB_USER = "root";
-    private static final String DB_PASS = "Ritujaa@2006";
+    private static final String DB_PASS = "Vruksha@2014";
 
     private final Div liveAqiDiv;
     private final Div historicalDiv;
@@ -42,7 +44,7 @@ public class AqiView extends VerticalLayout {
     private final Div cityRankingContainer;
     private Grid<CityAqiData> cityRankingGrid;
     private Div chartContainer; 
-
+    private final Span dateTimeSpan;
     public AqiView(String city) {
         this();
         updateAqiForCity(city);
@@ -75,6 +77,18 @@ public class AqiView extends VerticalLayout {
             .set("margin-bottom", "30px")
             .set("font-size", "2.5em");
     add(mainTitle);
+
+    dateTimeSpan = new Span();
+    dateTimeSpan.getStyle()
+            .set("text-align", "center")
+            .set("color", "#34495e")
+            .set("font-weight", "500")
+            .set("font-size", "1.1em")
+            .set("width", "100%")
+            .set("display", "block")
+            .set("margin-top", "-25px") // Pulls it closer to the main title
+            .set("margin-bottom", "25px");
+    add(dateTimeSpan);
 
     // ----- Extreme Cities Section -----
     extremeCitiesContainer = new Div();
@@ -204,127 +218,137 @@ add(mainContentLayout);
                     "  }" +
                     "}, 2000);"
     );
+    updateTime(); 
+    getUI().ifPresent(ui -> {
+        ui.setPollInterval(60000);
+        ui.addPollListener(event -> updateTime());
+    });   
 }
 
-
-
-    public void updateAqiForCity(String city) {
-    if (city == null || city.isEmpty()) return;
+public void updateAqiForCity(String city) {
+    if (city == null || city.isEmpty()) {
+        return;
+    }
     currentCity = city;
     liveAqiDiv.removeAll();
-    
-    try {
-        JsonObject data = CurrentDataFetcher.getCurrentDataForCity(city);
-        if (data != null && data.has("aqi")) {
-            JsonObject aqi = data.getAsJsonObject("aqi");
-            H2 currentAqiHeader = new H2("Current AQI for " + city);
-            currentAqiHeader.getStyle()
-                    .set("color", "#34495e")
-                    .set("margin-bottom", "25px")
-                    .set("text-align", "center")
-                    .set("font-size", "2em");
-            liveAqiDiv.add(currentAqiHeader);
 
-            double calculatedAqi = calculateIndianAQI(aqi);
-            String aqiCategory = getAqiCategory(calculatedAqi);
+    CurrentDataFetcher.getCurrentDataForCityAsync(city)
+            .thenAccept(data -> {
+                getUI().ifPresent(ui -> ui.access(() -> {
+                    liveAqiDiv.removeAll();
+                    if (data != null && data.has("aqi")) {
+                        JsonObject aqi = data.getAsJsonObject("aqi");
+                        H2 currentAqiHeader = new H2("Current AQI for " + city);
+                        currentAqiHeader.getStyle()
+                                .set("color", "#34495e")
+                                .set("margin-bottom", "25px")
+                                .set("text-align", "center")
+                                .set("font-size", "2em");
+                        liveAqiDiv.add(currentAqiHeader);
 
-            HorizontalLayout mainLayout = new HorizontalLayout();
-            mainLayout.setSizeFull();
-            mainLayout.setSpacing(true);
-            mainLayout.getStyle().set("align-items", "flex-start");
+                        double calculatedAqi = calculateIndianAQI(aqi);
+                        String aqiCategory = getAqiCategory(calculatedAqi);
 
-            Div leftSide = createAqiMeter(calculatedAqi, aqiCategory);
-            leftSide.getStyle()
-                    .set("flex-shrink", "0")
-                    .set("width", "35%");
+                        HorizontalLayout mainLayout = new HorizontalLayout();
+                        mainLayout.setSizeFull();
+                        mainLayout.setSpacing(true);
+                        mainLayout.getStyle().set("align-items", "flex-start");
 
-            VerticalLayout rightSide = new VerticalLayout();
-            rightSide.getStyle()
-                    .set("width", "65%")
-                    .set("padding", "0")
-                    .set("spacing", "0");
-            rightSide.setPadding(false);
-            rightSide.setSpacing(true);
+                        Div leftSide = createAqiMeter(calculatedAqi, aqiCategory);
+                        leftSide.getStyle()
+                                .set("flex-shrink", "0")
+                                .set("width", "35%");
 
-            Div rightHeader = new Div();
-            rightHeader.getStyle()
-                    .set("position", "relative")
-                    .set("background", "linear-gradient(135deg, #667eea 0%, #667eea 0%)")
-                    .set("color", "white")
-                    .set("padding", "20px 25px")
-                    .set("border-radius", "15px")
-                    .set("margin-bottom", "20px")
-                    .set("text-align", "center")
-                    .set("box-shadow", "0 6px 20px rgba(102, 126, 234, 0.4)")
-                    .set("overflow", "hidden");
+                        VerticalLayout rightSide = new VerticalLayout();
+                        rightSide.getStyle()
+                                .set("width", "65%")
+                                .set("padding", "0")
+                                .set("spacing", "0");
+                        rightSide.setPadding(false);
+                        rightSide.setSpacing(true);
 
-            H3 rightTitle = new H3("Current Pollutant Details");
-            rightTitle.getStyle()
-                    .set("margin", "0")
-                    .set("font-size", "20px")
-                    .set("font-weight", "600")
-                    .set("text-shadow", "0 2px 4px rgba(0, 0, 0, 0.3)");
-            rightHeader.add(rightTitle);
-            rightSide.add(rightHeader);
+                        Div rightHeader = new Div();
+                        rightHeader.getStyle()
+                                .set("position", "relative")
+                                .set("background", "linear-gradient(135deg, #667eea 0%, #667eea 0%)")
+                                .set("color", "white")
+                                .set("padding", "20px 25px")
+                                .set("border-radius", "15px")
+                                .set("margin-bottom", "20px")
+                                .set("text-align", "center")
+                                .set("box-shadow", "0 6px 20px rgba(102, 126, 234, 0.4)")
+                                .set("overflow", "hidden");
 
-            if (data.has("time")) {
-                addSuperAqiCard(rightSide, "Time", data.get("time").getAsString());
-            }
-            if (aqi.has("interval")) {
-                addSuperAqiCard(rightSide, "Interval", aqi.get("interval").getAsString() + "s");
-            }
-            if (aqi.has("pm10")) {
-                addSuperAqiCard(rightSide, "PM10", aqi.get("pm10").getAsString() + " μg/m³");
-            }
-            if (aqi.has("pm2_5")) {
-                addSuperAqiCard(rightSide, "PM2.5", aqi.get("pm2_5").getAsString() + " μg/m³");
-            }
-            if (aqi.has("carbon_monoxide")) {
-                addSuperAqiCard(rightSide, "CO", aqi.get("carbon_monoxide").getAsString() + " μg/m³");
-            }
-            if (aqi.has("nitrogen_dioxide")) {
-                addSuperAqiCard(rightSide, "NO2", aqi.get("nitrogen_dioxide").getAsString() + " μg/m³");
-            }
-            if (aqi.has("ozone")) {
-                addSuperAqiCard(rightSide, "Ozone", aqi.get("ozone").getAsString() + " μg/m³");
-            }
-            if (aqi.has("sulphur_dioxide")) {
-                addSuperAqiCard(rightSide, "SO2", aqi.get("sulphur_dioxide").getAsString() + " μg/m³");
-            }
+                        H3 rightTitle = new H3("Current Pollutant Details");
+                        rightTitle.getStyle()
+                                .set("margin", "0")
+                                .set("font-size", "20px")
+                                .set("font-weight", "600")
+                                .set("text-shadow", "0 2px 4px rgba(0, 0, 0, 0.3)");
+                        rightHeader.add(rightTitle);
+                        rightSide.add(rightHeader);
 
-            Div recommendationsDiv = createRecommendationsSection(aqi);
-            rightSide.add(recommendationsDiv);
+                        if (data.has("time")) {
+                            addSuperAqiCard(rightSide, "Time", data.get("time").getAsString());
+                        }
+                        if (aqi.has("interval")) {
+                            addSuperAqiCard(rightSide, "Interval", aqi.get("interval").getAsString() + "s");
+                        }
+                        if (aqi.has("pm10")) {
+                            addSuperAqiCard(rightSide, "PM10", aqi.get("pm10").getAsString() + " μg/m³");
+                        }
+                        if (aqi.has("pm2_5")) {
+                            addSuperAqiCard(rightSide, "PM2.5", aqi.get("pm2_5").getAsString() + " μg/m³");
+                        }
+                        if (aqi.has("carbon_monoxide")) {
+                            addSuperAqiCard(rightSide, "CO", aqi.get("carbon_monoxide").getAsString() + " μg/m³");
+                        }
+                        if (aqi.has("nitrogen_dioxide")) {
+                            addSuperAqiCard(rightSide, "NO2", aqi.get("nitrogen_dioxide").getAsString() + " μg/m³");
+                        }
+                        if (aqi.has("ozone")) {
+                            addSuperAqiCard(rightSide, "Ozone", aqi.get("ozone").getAsString() + " μg/m³");
+                        }
+                        if (aqi.has("sulphur_dioxide")) {
+                            addSuperAqiCard(rightSide, "SO2", aqi.get("sulphur_dioxide").getAsString() + " μg/m³");
+                        }
 
-            mainLayout.add(leftSide, rightSide);
-            liveAqiDiv.add(mainLayout);
+                        Div recommendationsDiv = createRecommendationsSection(aqi);
+                        rightSide.add(recommendationsDiv);
 
-            updateCurrentPollutantsChart(aqi);
-            updatePollutantComparisonChart(aqi);
-            updateRadarChart(aqi);
-            
-        } else {
-            liveAqiDiv.add(new Span("No current AQI data for " + city));
-        }
-    } catch (Exception e) {
-        liveAqiDiv.add(new Span("Failed to load current AQI: " + e.getMessage()));
-        e.printStackTrace(); 
-    }
+                        mainLayout.add(leftSide, rightSide);
+                        liveAqiDiv.add(mainLayout);
 
-    historicalDiv.removeAll();
-    
-Span selectDateSpan = new Span("Select a date to view historical AQI");
-selectDateSpan.getStyle()
-        .set("color", "#7f8c8d")
-        .set("font-style", "italic")
-        .set("font-size", "0.75em")      
-        .set("text-align", "center")
-        .set("display", "block")
-        .set("margin", "10px auto");     
+                        updateCurrentPollutantsChart(aqi);
+                        updatePollutantComparisonChart(aqi);
+                        updateRadarChart(aqi);
 
-historicalDiv.add(selectDateSpan);
+                    } else {
+                        liveAqiDiv.add(new Span("No current AQI data for " + city));
+                    }
 
+                    historicalDiv.removeAll();
+                    Span selectDateSpan = new Span("Select a date to view historical AQI");
+                    selectDateSpan.getStyle()
+                            .set("color", "#7f8c8d")
+                            .set("font-style", "italic")
+                            .set("font-size", "0.75em")
+                            .set("text-align", "center")
+                            .set("display", "block")
+                            .set("margin", "10px auto");
+                    historicalDiv.add(selectDateSpan);
 
-    updateChartForCity(city);
+                    updateChartForCity(city);
+                }));
+            })
+            .exceptionally(ex -> {
+                getUI().ifPresent(ui -> ui.access(() -> {
+                    liveAqiDiv.removeAll();
+                    liveAqiDiv.add(new Span("Failed to load AQI data: " + ex.getMessage()));
+                    ex.printStackTrace();
+                }));
+                return null;
+            });
 }
     
 
@@ -334,6 +358,8 @@ private void updateChartForCity(String city) {
 
     try {
         JsonObject chartData = HistoricalDataFetchHelper.fetchLast7DaysAqi(city);
+
+      System.out.println("Fetched 7-Day AQI Data: " + chartData.toString());
 
         if (chartData == null || !chartData.has("dates")) {
             System.err.println("No chart data available for " + city);
@@ -406,6 +432,12 @@ private void updateChartForCity(String city) {
 }
 
     private Div currentPollutantsChartContainer;
+
+private void updateTime() {
+    LocalDateTime now = LocalDateTime.now();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("eeee, dd MMM yyyy HH:mm");
+    dateTimeSpan.setText(now.format(formatter));
+}
 
 private void createCurrentPollutantsChart() {
     currentPollutantsChartContainer = new Div();
@@ -921,7 +953,6 @@ private void updateRadarChart(JsonObject aqi) {
     }
 
     private List<CityAqiData> fetchAllCitiesAqi() {
-        List<CityAqiData> data = new ArrayList<>();
         List<String> cities = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
             try (PreparedStatement ps = conn.prepareStatement("SELECT city_name FROM city")) {
@@ -934,19 +965,30 @@ private void updateRadarChart(JsonObject aqi) {
             System.err.println("Failed to fetch cities from database: " + e.getMessage());
         }
 
-        for (String city : cities) {
-            try {
-                JsonObject json = CurrentDataFetcher.getCurrentDataForCity(city);
-                if (json != null && json.has("aqi")) {
-                    JsonObject aqi = json.getAsJsonObject("aqi");
-                    double calcAqi = calculateIndianAQI(aqi);
-                    String cat = getAqiCategory(calcAqi);
-                    data.add(new CityAqiData(city, calcAqi, cat, null));
-                }
-            } catch (Exception e) {
-                System.err.println("Failed to fetch AQI for " + city + ": " + e.getMessage());
-            }
-        }
+        List<CompletableFuture<CityAqiData>> futures = cities.stream()
+            .map(city -> CurrentDataFetcher.getCurrentDataForCityAsync(city)
+                .thenApply(json -> {
+                    if (json != null && json.has("aqi")) {
+                        JsonObject aqi = json.getAsJsonObject("aqi");
+                        double calcAqi = calculateIndianAQI(aqi);
+                        String cat = getAqiCategory(calcAqi);
+                        return new CityAqiData(city, calcAqi, cat, null);
+                    }
+                    return null;
+                })
+                .exceptionally(ex -> {
+                    System.err.println("Failed to fetch AQI for " + city + ": " + ex.getMessage());
+                    return null;
+                })
+            ).toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        List<CityAqiData> data = futures.stream()
+                .map(CompletableFuture::join)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
+
         return data;
     }
 

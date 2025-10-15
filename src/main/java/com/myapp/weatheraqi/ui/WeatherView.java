@@ -96,29 +96,15 @@ public class WeatherView extends VerticalLayout {
 
         setLoadingState(true);
 
-        CompletableFuture<JsonObject> currentFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                return new CurrentDataFetcher().getCurrentDataForCity(city);            } catch (Exception e) {
-                throw new RuntimeException("Could not fetch current weather", e);
-            }
-        });
+        CompletableFuture<JsonObject> currentFuture = CurrentDataFetcher.getCurrentDataForCityAsync(city);
 
-        CompletableFuture<JsonObject> forecastFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                return new WeatherForecastFetcher().getForecastDataForCity(city);            } catch (Exception e) {
-                throw new RuntimeException("Could not fetch forecast", e);
-            }
-        });
+        CompletableFuture<JsonObject> forecastFuture = new WeatherForecastFetcher().getForecastDataForCityAsync(city);
 
-        CompletableFuture<JsonObject> monthlyFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                LocalDate monthlyStart = LocalDate.of(2025, 7, 1);
-                LocalDate monthlyEnd = LocalDate.of(2025, 7, 31);
-                return HistoricalDataFetchHelper.fetchHistoricalData(city, monthlyStart, monthlyEnd);
-            } catch (Exception e) {
-                throw new RuntimeException("Could not fetch historical data", e);
-            }
-        });
+        LocalDate lastMonth = LocalDate.now().minusMonths(1);
+        LocalDate monthlyStart = lastMonth.withDayOfMonth(1);
+        LocalDate monthlyEnd = lastMonth.with(java.time.temporal.TemporalAdjusters.lastDayOfMonth());
+        CompletableFuture<JsonObject> monthlyFuture = HistoricalDataFetchHelper.fetchHistoricalDataAsync(city, monthlyStart, monthlyEnd);
+
 
         CompletableFuture.allOf(currentFuture, forecastFuture, monthlyFuture)
                 .thenAccept(voidResult -> {
@@ -129,7 +115,7 @@ public class WeatherView extends VerticalLayout {
                     getUI().ifPresent(ui -> ui.access(() -> {
                         updateCurrentWeatherUI(city, currentData);
                         updateForecastUI(city, forecastData);
-                        updateChartsDashboardUI(monthlyData, forecastData);
+                        updateChartsDashboardUI(monthlyData, forecastData, LocalDate.now());
                         resetSingleDayHistoricalView();
                         setLoadingState(false); 
                     }));
@@ -333,11 +319,13 @@ public class WeatherView extends VerticalLayout {
         }
     }
 
-    private void updateChartsDashboardUI(JsonObject monthlyData, JsonObject forecastData) {
+    private void updateChartsDashboardUI(JsonObject monthlyData, JsonObject forecastData, LocalDate referenceDate) {
         historicalChartsDiv.removeAll();
         try {
             if (monthlyData != null && monthlyData.has("weather")) {
-                historicalChartsDiv.add(new H2("Monthly Summary (July 2025)"));
+            LocalDate lastMonthDate = referenceDate.minusMonths(1);
+            String dynamicTitle = lastMonthDate.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"));
+            historicalChartsDiv.add(new H2("Monthly Summary (" + dynamicTitle + ")"));             
                 JsonArray monthlyWeather = monthlyData.getAsJsonArray("weather");
                 buildMonthlyDashboard(monthlyWeather);
             } else {

@@ -18,48 +18,40 @@ public class CurrentDataFetcher extends DataFetcher {
     public void run() {
     }
 
-    public static JsonObject getCurrentDataForCity(String cityName) throws Exception {
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
-            return getCurrentDataForCity(conn, cityName);
+    public static CompletableFuture<JsonObject> getCurrentDataForCityAsync(String cityName) {
+        try {
+            double[] latLon;
+            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
+                latLon = getLatLon(conn, cityName);
+            }
+            
+            if (latLon == null) {
+                throw new Exception("City not found: " + cityName);
+            }
+
+            String weatherUrl = String.format(
+                    "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=%s&timezone=auto",
+                    latLon[0], latLon[1], WEATHER_PARAMS);
+            String aqiUrl = String.format(
+                    "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.4f&longitude=%.4f&current=%s&timezone=auto",
+                    latLon[0], latLon[1], AQI_PARAMS);
+
+            CompletableFuture<String> weatherFuture = fetchAPIAsync(weatherUrl);
+            CompletableFuture<String> aqiFuture = fetchAPIAsync(aqiUrl);
+
+            return weatherFuture.thenCombine(aqiFuture, (weatherResp, aqiResp) -> {
+                JsonObject weatherCurrent = JsonParser.parseString(weatherResp).getAsJsonObject().getAsJsonObject("current");
+                JsonObject aqiCurrent = JsonParser.parseString(aqiResp).getAsJsonObject().getAsJsonObject("current");
+                
+                JsonObject merged = new JsonObject();
+                merged.add("weather", weatherCurrent);
+                merged.add("aqi", aqiCurrent);
+                return merged;
+            });
+
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
         }
-    }
-
-    public static JsonObject getCurrentDataForCity(Connection conn, String cityName) throws Exception {
-        double[] latLon = getLatLon(conn, cityName);
-        if (latLon == null) {
-            throw new Exception("City not found: " + cityName);
-        }
-
-        double lat = latLon[0];
-        double lon = latLon[1];
-
-        String weatherUrl = String.format(
-                "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=%s&timezone=auto",
-                lat, lon, WEATHER_PARAMS
-        );
-        String aqiUrl = String.format(
-                "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.4f&longitude=%.4f&current=%s&timezone=auto",
-                lat, lon, AQI_PARAMS
-        );
-
-        CompletableFuture<String> weatherFuture = fetchAPIAsync(weatherUrl);
-        CompletableFuture<String> aqiFuture = fetchAPIAsync(aqiUrl);
-
-        CompletableFuture.allOf(weatherFuture, aqiFuture).join();
-
-        String weatherResp = weatherFuture.get();
-        String aqiResp = aqiFuture.get();
-
-        JsonObject weatherCurrent = JsonParser.parseString(weatherResp)
-                .getAsJsonObject().getAsJsonObject("current");
-        JsonObject aqiCurrent = JsonParser.parseString(aqiResp)
-                .getAsJsonObject().getAsJsonObject("current");
-
-        JsonObject merged = new JsonObject();
-        merged.add("weather", weatherCurrent);
-        merged.add("aqi", aqiCurrent);
-
-        return merged;
     }
 
     private static double[] getLatLon(Connection conn, String cityName) throws SQLException {

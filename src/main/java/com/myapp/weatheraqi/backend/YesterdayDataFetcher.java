@@ -1,9 +1,14 @@
 package com.myapp.weatheraqi.backend;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +16,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class YesterdayDataFetcher extends DataFetcher {
 
@@ -20,7 +29,10 @@ public class YesterdayDataFetcher extends DataFetcher {
 
     @Override
     public void run() {
-        LocalDate yesterday = LocalDate.now().minusDays(1);
+        //LocalDate yesterday = LocalDate.now().minusDays(1);
+        LocalDate yesterday = LocalDate.of(2025, 10, 10);
+
+
         System.out.println("Fetching data for: " + yesterday);
 
         int numberOfThreads = Runtime.getRuntime().availableProcessors();

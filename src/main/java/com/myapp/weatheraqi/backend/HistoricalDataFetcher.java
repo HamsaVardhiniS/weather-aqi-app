@@ -1,10 +1,14 @@
 package com.myapp.weatheraqi.backend;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +16,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class HistoricalDataFetcher extends DataFetcher {
 
@@ -23,8 +32,8 @@ public class HistoricalDataFetcher extends DataFetcher {
     public void run() {
         int numberOfThreads = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
-        LocalDate start = LocalDate.of(2025, 6, 1);
-        LocalDate end = LocalDate.of(2025, 10, 13);
+        LocalDate start = LocalDate.of(2025, 10, 14);
+        LocalDate end = LocalDate.of(2025, 10, 15);
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
             List<CityInfo> cities = getCities(conn);

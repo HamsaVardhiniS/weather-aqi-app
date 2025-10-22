@@ -1,25 +1,5 @@
 package com.myapp.weatheraqi.ui;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.myapp.weatheraqi.backend.CurrentDataFetcher;
-import com.myapp.weatheraqi.backend.HistoricalDataFetchHelper;
-import com.myapp.weatheraqi.backend.WeatherForecastFetcher;
-import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.datepicker.DatePicker;
-import com.vaadin.flow.component.html.*;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.progressbar.ProgressBar;
-import com.vaadin.flow.server.StreamResource;
-import org.knowm.xchart.BitmapEncoder;
-import org.knowm.xchart.CategoryChart;
-import org.knowm.xchart.CategoryChartBuilder;
-import org.knowm.xchart.XYChart;
-import org.knowm.xchart.XYChartBuilder;
-
 import java.io.ByteArrayInputStream;
 import java.sql.Date;
 import java.time.LocalDate;
@@ -29,6 +9,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.knowm.xchart.BitmapEncoder;
+import org.knowm.xchart.CategoryChart;
+import org.knowm.xchart.CategoryChartBuilder;
+import org.knowm.xchart.XYChart;
+import org.knowm.xchart.XYChartBuilder;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.myapp.weatheraqi.backend.CurrentDataFetcher;
+import com.myapp.weatheraqi.backend.HistoricalDataFetchHelper;
+import com.myapp.weatheraqi.backend.WeatherForecastFetcher;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.progressbar.ProgressBar;
+import com.vaadin.flow.server.StreamResource;
 
 public class WeatherView extends VerticalLayout {
 
@@ -124,7 +129,7 @@ public class WeatherView extends VerticalLayout {
                     getUI().ifPresent(ui -> ui.access(() -> {
                         removeAll();
                         add(new H2("Weather Information"));
-                        Div errorPanel = new Div(new Span("❌ Failed to load weather data for " + city + ". Please try another city or refresh."));
+                        Div errorPanel = new Div(new Span("Failed to load weather data for " + city + ". Please try another city or refresh."));
                         errorPanel.getStyle()
                                 .set("color", "red")
                                 .set("border", "1px solid red")
@@ -455,13 +460,12 @@ public class WeatherView extends VerticalLayout {
         String boyImgPath = weather.has("weather_code") ? mapWeatherBoyImage(weather.get("weather_code").getAsInt(), isDay) : (isDay ? "/images/cloudyboy.png" : "/images/cloudyboynight.png");
         Image boyImage = new Image(boyImgPath, "Weather Character");
         boyImage.getStyle()
-                .set("height", "220px") // Give the image a more explicit height
+                .set("height", "220px")
                 .set("object-fit", "contain");
 
         middleRow.add(leftCol, centerCol, boyImage);
         heroSection.add(middleRow);
 
-        // FIX: Use absolute positioning for the date/time stamp for stable placement
         String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy HH:mm"));
         Span dateTime = new Span(now);
         dateTime.getStyle()
@@ -628,14 +632,12 @@ public class WeatherView extends VerticalLayout {
 
             JsonArray forecastArray = transformForecastData(forecastData);
 
-            // Build the new charts
             Image tempForecastImg = buildForecastTempChart(forecastArray);
             Image rainForecastImg = buildForecastRainChart(forecastArray);
 
             HorizontalLayout forecastRow = new HorizontalLayout();
             forecastRow.setWidthFull();
             forecastRow.setSpacing(true);
-            // Add the new charts to the layout
             forecastRow.add(tempForecastImg, rainForecastImg);
 
             historicalChartsDiv.add(new H2("7-Day Forecast Charts"), forecastRow);
@@ -795,8 +797,6 @@ public class WeatherView extends VerticalLayout {
             dates.add(Date.valueOf(LocalDate.parse(day.get("date").getAsString())));
             rainSum.add(day.get("rain_sum").getAsDouble());
         }
-
-        // Create Chart
         XYChart rainChart = new XYChartBuilder()
                 .width(700).height(400)
                 .title("Rainfall Forecast")
@@ -821,8 +821,6 @@ public class WeatherView extends VerticalLayout {
             maxTemps.add(day.get("temperature_2m_max").getAsDouble());
             minTemps.add(day.get("temperature_2m_min").getAsDouble());
         }
-
-        // Create Chart
         XYChart tempChart = new XYChartBuilder()
                 .width(700).height(400)
                 .title("7-Day Temperature Forecast")

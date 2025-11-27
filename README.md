@@ -16,16 +16,6 @@ Built for Indian cities, but easily extendable for global use.
 
 ---
 
-## Project Structure
-
-src/main/java/com/myapp/weatheraqi
-├── Application.java # Spring Boot entry point
-├── backend/ # Backend logic (fetchers, services)
-└── ui/ # UI views (WeatherView, AqiView, MainView)
-pom.xml # Maven dependencies & build config
-
----
-
 ## Tech Stack
 
 - **Java 17**

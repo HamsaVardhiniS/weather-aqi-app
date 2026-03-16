@@ -29,18 +29,18 @@ Built for Indian cities, but easily extendable for global use.
 
 ## Installation & Setup
 
-### 1️⃣ Clone the repository
+### 1️. Clone the repository
 
 ```sh
 git clone https://github.com/your-username/weather-aqi-app.git
 cd weather-aqi-app
 ```
 
-### 2️⃣ Install dependencies
+### 2️. Install dependencies
 
 mvn clean install
 
-### 3️⃣ Run the application
+### 3️. Run the application
 
 mvn spring-boot:run
 
